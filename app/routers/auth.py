@@ -1,4 +1,5 @@
 import jwt
+import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -17,6 +18,8 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 login_rate_limiter = InMemoryRateLimiter(max_requests=settings.login_rate_limit_per_minute)
 
+logger = logging.getLogger("oxyn.auth")
+
 
 def token_pair(user: User) -> TokenPair:
     role = user.role.value
@@ -34,6 +37,7 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
     user = db.scalar(select(User).where(User.email == form.username.lower(), User.active.is_(True)))
     invalid_credentials = HTTPException(status_code=401, detail="E-mail ou senha inválidos")
     if not user:
+        logger.warning("Tentativa de login com e-mail desconhecido: %s", form.username.lower())
         raise invalid_credentials
     now = datetime.now(timezone.utc)
     locked_until = user.locked_until
@@ -42,16 +46,20 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
         # columns; values are always written as UTC, so treat naive as UTC here.
         locked_until = locked_until.replace(tzinfo=timezone.utc)
     if locked_until and locked_until > now:
+        logger.warning("Login bloqueado por lockout: user_id=%s", user.id)
         raise HTTPException(status_code=423, detail="Conta temporariamente bloqueada. Tente novamente mais tarde.")
     if not verify_password(form.password, user.hashed_password):
         user.failed_login_attempts += 1
         if user.failed_login_attempts >= settings.login_max_attempts:
             user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
+            logger.warning("Usuário bloqueado após tentativas falhas: user_id=%s", user.id)
         db.commit()
+        logger.info("Falha de login: user_id=%s attempts=%s", user.id, user.failed_login_attempts)
         raise invalid_credentials
     user.failed_login_attempts = 0
     user.locked_until = None
     db.commit()
+    logger.info("Login bem-sucedido: user_id=%s", user.id)
     return token_pair(user)
 
 
@@ -75,6 +83,7 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
 def logout(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     user.token_version += 1
     db.commit()
+    logger.info("Logout: user_id=%s", user.id)
 
 
 @router.get("/me", response_model=UserOut)

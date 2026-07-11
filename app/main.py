@@ -1,3 +1,4 @@
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,7 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.errors import register_error_handlers
+from app.logging_config import configure_logging
+from app.request_context import request_id_var
 from app.routers import alerts, auth, dashboard, hospitals, safety, shifts, users
+
+configure_logging()
 
 
 @asynccontextmanager
@@ -31,6 +36,18 @@ app.add_middleware(
 )
 
 register_error_handlers(app)
+
+
+@app.middleware("http")
+async def add_request_id(request, call_next):
+    request_id = str(uuid.uuid4())
+    token = request_id_var.set(request_id)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_var.reset(token)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 @app.get("/health", tags=["Sistema"])
