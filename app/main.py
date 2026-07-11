@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.errors import register_error_handlers
 from app.routers import alerts, auth, dashboard, hospitals, safety, shifts, users
 
 
@@ -28,6 +29,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+register_error_handlers(app)
 
 
 @app.get("/health", tags=["Sistema"])
