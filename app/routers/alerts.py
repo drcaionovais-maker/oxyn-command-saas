@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -55,6 +55,8 @@ def resolve_alert(
     user: User = Depends(get_current_user),
 ):
     alert = tenant_object_or_404(db, Alert, alert_id, user.tenant_id)
+    if alert.resolved_at is not None:
+        raise HTTPException(status_code=409, detail="Alerta já resolvido")
     alert.resolved_at = datetime.now(timezone.utc)
     alert.resolved_by_id = user.id
     log_action(db, user, "resolve", "alert", alert.id)
