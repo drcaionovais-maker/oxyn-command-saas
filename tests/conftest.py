@@ -48,3 +48,43 @@ def auth_headers(client):
     )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
+def other_tenant_auth_headers(client):
+    with SessionLocal() as db:
+        tenant = Tenant(name="OXYN Outro", slug="oxyn-outro")
+        db.add(tenant)
+        db.flush()
+        db.add(
+            User(
+                tenant_id=tenant.id,
+                email="admin@outro.test",
+                full_name="Admin Outro",
+                hashed_password=hash_password("StrongPass123!"),
+                role=Role.owner,
+            )
+        )
+        db.commit()
+    response = client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin@outro.test", "password": "StrongPass123!"},
+    )
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
+def user_factory(client, auth_headers):
+    def _create(email: str, role: str, password: str = "StrongPass123!"):
+        response = client.post(
+            "/api/v1/users",
+            headers=auth_headers,
+            json={"email": email, "full_name": "Usuário Teste", "password": password, "role": role},
+        )
+        assert response.status_code == 201
+        login = client.post("/api/v1/auth/login", data={"username": email, "password": password})
+        assert login.status_code == 200
+        return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    return _create
