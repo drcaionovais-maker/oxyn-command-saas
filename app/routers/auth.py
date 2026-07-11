@@ -1,5 +1,5 @@
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
@@ -29,8 +29,13 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     invalid_credentials = HTTPException(status_code=401, detail="E-mail ou senha inválidos")
     if not user:
         raise invalid_credentials
-    now = datetime.now()
-    if user.locked_until and user.locked_until > now:
+    now = datetime.now(timezone.utc)
+    locked_until = user.locked_until
+    if locked_until is not None and locked_until.tzinfo is None:
+        # SQLite (used in tests) drops tzinfo on read-back for DateTime(timezone=True)
+        # columns; values are always written as UTC, so treat naive as UTC here.
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+    if locked_until and locked_until > now:
         raise HTTPException(status_code=423, detail="Conta temporariamente bloqueada. Tente novamente mais tarde.")
     if not verify_password(form.password, user.hashed_password):
         user.failed_login_attempts += 1
