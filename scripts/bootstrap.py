@@ -3,7 +3,7 @@ import re
 from sqlalchemy import select
 
 from app.config import settings
-from app.db import Base, SessionLocal, engine
+from app.db import SessionLocal
 from app.models import Role, Tenant, User
 from app.security import hash_password
 
@@ -13,7 +13,6 @@ def slugify(value: str) -> str:
 
 
 def main() -> None:
-    Base.metadata.create_all(engine)
     with SessionLocal() as db:
         tenant = db.scalar(select(Tenant).where(Tenant.slug == slugify(settings.bootstrap_tenant_name)))
         if not tenant:
