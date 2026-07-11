@@ -69,3 +69,18 @@ def test_successful_login_resets_failed_attempts(client):
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == "admin@oxyn.test"))
         assert user.failed_login_attempts == 0
+
+
+def test_login_rate_limited_by_ip(client):
+    from app.config import settings
+
+    for _ in range(settings.login_rate_limit_per_minute):
+        client.post(
+            "/api/v1/auth/login",
+            data={"username": "admin@oxyn.test", "password": "wrong-password"},
+        )
+    blocked = client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin@oxyn.test", "password": "wrong-password"},
+    )
+    assert blocked.status_code == 429

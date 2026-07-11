@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     refresh_token_days: int = 30
     login_max_attempts: int = 5
     login_lockout_minutes: int = 15
+    login_rate_limit_per_minute: int = 20
     cors_origins: list[str] = ["http://localhost:3000"]
     bootstrap_admin_email: str = "admin@oxyn.health"
     bootstrap_admin_password: str = "ChangeMe123!"

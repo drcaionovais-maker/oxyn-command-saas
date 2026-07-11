@@ -1,6 +1,6 @@
 import jwt
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,10 +9,13 @@ from app.config import settings
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import User
+from app.rate_limit import InMemoryRateLimiter
 from app.schemas import RefreshRequest, TokenPair, UserOut
 from app.security import create_token, decode_token, verify_password
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
+
+login_rate_limiter = InMemoryRateLimiter(max_requests=settings.login_rate_limit_per_minute)
 
 
 def token_pair(user: User) -> TokenPair:
@@ -24,7 +27,10 @@ def token_pair(user: User) -> TokenPair:
 
 
 @router.post("/login", response_model=TokenPair)
-def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    if not login_rate_limiter.allow(client_ip):
+        raise HTTPException(status_code=429, detail="Muitas tentativas de login. Tente novamente em instantes.")
     user = db.scalar(select(User).where(User.email == form.username.lower(), User.active.is_(True)))
     invalid_credentials = HTTPException(status_code=401, detail="E-mail ou senha inválidos")
     if not user:

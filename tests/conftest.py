@@ -8,11 +8,13 @@ from fastapi.testclient import TestClient
 from app.db import Base, SessionLocal, engine
 from app.main import app
 from app.models import Role, Tenant, User
+from app.routers.auth import login_rate_limiter
 from app.security import hash_password
 
 
 @pytest.fixture(autouse=True)
 def database():
+    login_rate_limiter.reset()
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
