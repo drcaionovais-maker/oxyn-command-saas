@@ -1,3 +1,8 @@
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
 def test_validation_error_has_structured_body(client, auth_headers):
     response = client.post(
         "/api/v1/hospitals",
@@ -10,7 +15,7 @@ def test_validation_error_has_structured_body(client, auth_headers):
     assert body["errors"][0]["field"] == "name"
 
 
-def test_unhandled_exception_returns_generic_500(client, auth_headers, monkeypatch):
+def test_unhandled_exception_returns_generic_500(auth_headers, monkeypatch):
     from app.routers import hospitals
 
     def boom(*args, **kwargs):
@@ -20,7 +25,8 @@ def test_unhandled_exception_returns_generic_500(client, auth_headers, monkeypat
     # not app.audit.log_action itself
     monkeypatch.setattr(hospitals, "log_action", boom)
 
-    response = client.post(
+    local_client = TestClient(app, raise_server_exceptions=False)
+    response = local_client.post(
         "/api/v1/hospitals",
         headers=auth_headers,
         json={"name": "Hospital Instável"},
