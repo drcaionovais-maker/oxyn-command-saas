@@ -61,16 +61,25 @@ Use o `access_token` retornado como `Authorization: Bearer <token>`.
 | Alertas | `/api/v1/alerts` |
 | Painel | `/api/v1/dashboard/{hospital_id}` |
 
+`POST /api/v1/auth/logout` invalida imediatamente todos os tokens emitidos anteriormente para o usuário autenticado.
+
 ## Migrações
 
-Para gerar a primeira migração após subir o banco:
+O schema é versionado via Alembic desde a migração `initial schema`. Para subir o banco:
 
 ```bash
-alembic revision --autogenerate -m "initial schema"
 alembic upgrade head
+python -m scripts.bootstrap
 ```
 
-O `scripts.bootstrap` usa `create_all` para facilitar o primeiro teste. Em produção, utilize exclusivamente migrações Alembic.
+O `scripts.bootstrap` não usa mais `create_all` — ele assume que `alembic upgrade head` já rodou. O `Dockerfile` já executa essa sequência automaticamente no `CMD`.
+
+Para gerar uma nova migração depois de alterar `app/models.py`:
+
+```bash
+alembic revision --autogenerate -m "descrição da mudança"
+alembic upgrade head
+```
 
 ## Segurança antes de produção
 
@@ -78,7 +87,7 @@ O `scripts.bootstrap` usa `create_all` para facilitar o primeiro teste. Em produ
 - Executar atrás de HTTPS e proxy reverso
 - Restringir CORS ao domínio oficial
 - Usar serviço gerenciado de PostgreSQL com backups e criptografia
-- Adicionar rate limiting, revogação de sessão e MFA para administradores
+- ~~Rate limiting~~ e ~~revogação de sessão~~ implementados (`/auth/logout` + lockout); falta MFA para administradores
 - Evitar dados clínicos identificáveis; adotar identificadores pseudonimizados
 - Formalizar controles LGPD, política de retenção e resposta a incidentes
 
