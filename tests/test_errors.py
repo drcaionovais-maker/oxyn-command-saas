@@ -13,6 +13,7 @@ def test_validation_error_has_structured_body(client, auth_headers):
     body = response.json()
     assert body["error_code"] == "validation_error"
     assert body["errors"][0]["field"] == "name"
+    assert "X-Request-ID" in response.headers
 
 
 def test_unhandled_exception_returns_generic_500(auth_headers, monkeypatch):
@@ -33,3 +34,4 @@ def test_unhandled_exception_returns_generic_500(auth_headers, monkeypatch):
     )
     assert response.status_code == 500
     assert response.json()["error_code"] == "internal_error"
+    assert "X-Request-ID" in response.headers

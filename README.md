@@ -88,6 +88,7 @@ alembic upgrade head
 - Restringir CORS ao domínio oficial
 - Usar serviço gerenciado de PostgreSQL com backups e criptografia
 - ~~Rate limiting~~ e ~~revogação de sessão~~ implementados (`/auth/logout` + lockout); falta MFA para administradores
+- O container roda `uvicorn` com `--proxy-headers --forwarded-allow-ips='*'`, ou seja, confia no cabeçalho `X-Forwarded-For` de qualquer peer direto — isso é necessário para que o rate limit e o lockout por IP funcionem corretamente atrás do proxy reverso, mas exige que o container NUNCA seja alcançável diretamente por redes não confiáveis (apenas através do proxy reverso); caso contrário, um cliente malicioso poderia forjar seu próprio IP e burlar o rate limit e o lockout por IP
 - Evitar dados clínicos identificáveis; adotar identificadores pseudonimizados
 - Formalizar controles LGPD, política de retenção e resposta a incidentes
 
