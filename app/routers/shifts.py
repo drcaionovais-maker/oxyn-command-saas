@@ -36,8 +36,6 @@ def create_shift(
     db: Session = Depends(get_db),
     current: User = Depends(require_roles(Role.owner, Role.admin, Role.coordinator)),
 ):
-    if body.ends_at <= body.starts_at:
-        raise HTTPException(status_code=422, detail="Término deve ser posterior ao início")
     tenant_object_or_404(db, Hospital, body.hospital_id, current.tenant_id)
     tenant_object_or_404(db, User, body.user_id, current.tenant_id)
     if body.room_id:

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models import AlertLevel, Role, RoomStatus
 
@@ -84,6 +84,12 @@ class ShiftCreate(BaseModel):
     shift_date: date
     starts_at: datetime
     ends_at: datetime
+
+    @model_validator(mode="after")
+    def check_period(self) -> "ShiftCreate":
+        if self.ends_at <= self.starts_at:
+            raise ValueError("Término deve ser posterior ao início")
+        return self
 
 
 class ShiftOut(ORMModel):
