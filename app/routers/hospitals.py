@@ -5,10 +5,18 @@ from sqlalchemy.orm import Session
 from app.audit import log_action
 from app.db import get_db
 from app.dependencies import get_current_user, require_roles, tenant_object_or_404
-from app.models import Hospital, OperatingRoom, Role, User
+from app.models import Hospital, OperatingRoom, Role, RoomStatus, User
 from app.schemas import HospitalCreate, HospitalOut, RoomCreate, RoomOut, RoomUpdate
 
 router = APIRouter(prefix="/hospitals", tags=["Hospitais e salas"])
+
+ALLOWED_ROOM_TRANSITIONS: dict[RoomStatus, set[RoomStatus]] = {
+    RoomStatus.free: {RoomStatus.preparation, RoomStatus.blocked},
+    RoomStatus.preparation: {RoomStatus.surgery, RoomStatus.blocked},
+    RoomStatus.surgery: {RoomStatus.recovery, RoomStatus.blocked},
+    RoomStatus.recovery: {RoomStatus.free, RoomStatus.blocked},
+    RoomStatus.blocked: {RoomStatus.free},
+}
 
 
 @router.get("", response_model=list[HospitalOut])
@@ -78,6 +86,12 @@ def update_room(
     if room.hospital_id != hospital_id:
         raise HTTPException(status_code=404, detail="Sala não pertence ao hospital")
     changes = body.model_dump(exclude_unset=True)
+    new_status = changes.get("status")
+    if new_status is not None and new_status != room.status and new_status not in ALLOWED_ROOM_TRANSITIONS[room.status]:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Transição de status inválida: {room.status.value} → {new_status.value}",
+        )
     for key, value in changes.items():
         setattr(room, key, value)
     log_action(db, user, "update", "operating_room", room.id, changes)

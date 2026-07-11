@@ -21,6 +21,15 @@ def test_create_hospital_room_and_dashboard(client, auth_headers):
     assert room.status_code == 201
     room_id = room.json()["id"]
 
+    # Follow the valid state machine: free -> preparation -> surgery
+    prep = client.patch(
+        f"/api/v1/hospitals/{hospital_id}/rooms/{room_id}",
+        headers=auth_headers,
+        json={"status": "preparation"},
+    )
+    assert prep.status_code == 200
+    assert prep.json()["status"] == "preparation"
+
     updated = client.patch(
         f"/api/v1/hospitals/{hospital_id}/rooms/{room_id}",
         headers=auth_headers,
