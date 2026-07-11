@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -67,6 +67,9 @@ class User(Base, TenantMixin, TimestampMixin):
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.viewer)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     crm: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Hospital(Base, TenantMixin, TimestampMixin):
