@@ -1,5 +1,7 @@
 # OXYN Command — SaaS Backend
 
+[![CI](https://github.com/drcaionovais-maker/oxyn-command-saas/actions/workflows/ci.yml/badge.svg)](https://github.com/drcaionovais-maker/oxyn-command-saas/actions/workflows/ci.yml)
+
 Repositório: https://github.com/drcaionovais-maker/oxyn-command-saas
 
 Backend Python multi-tenant para gestão operacional de serviços de anestesiologia. O projeto foi desenhado para conectar o aplicativo mobile OXYN Command a dados reais, com isolamento por empresa, permissões e auditoria.
