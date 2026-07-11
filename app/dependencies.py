@@ -23,12 +23,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         payload = decode_token(token)
         user_id = payload.get("sub")
         tenant_id = payload.get("tenant_id")
+        token_version = payload.get("tv")
     except jwt.InvalidTokenError as exc:
         raise credentials_error from exc
     user = db.scalar(
         select(User).where(User.id == user_id, User.tenant_id == tenant_id, User.active.is_(True))
     )
-    if not user:
+    if not user or user.token_version != token_version:
         raise credentials_error
     return user
 

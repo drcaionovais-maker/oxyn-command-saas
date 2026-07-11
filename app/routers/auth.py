@@ -16,8 +16,8 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 def token_pair(user: User) -> TokenPair:
     role = user.role.value
     return TokenPair(
-        access_token=create_token(user.id, user.tenant_id, role, "access"),
-        refresh_token=create_token(user.id, user.tenant_id, role, "refresh"),
+        access_token=create_token(user.id, user.tenant_id, role, "access", user.token_version),
+        refresh_token=create_token(user.id, user.tenant_id, role, "refresh", user.token_version),
     )
 
 
@@ -40,9 +40,15 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
             User.id == payload["sub"], User.tenant_id == payload["tenant_id"], User.active.is_(True)
         )
     )
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuário inativo ou inexistente")
+    if not user or user.token_version != payload.get("tv"):
+        raise HTTPException(status_code=401, detail="Refresh token inválido")
     return token_pair(user)
+
+
+@router.post("/logout", status_code=204)
+def logout(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    user.token_version += 1
+    db.commit()
 
 
 @router.get("/me", response_model=UserOut)

@@ -30,7 +30,7 @@ class UserCreate(BaseModel):
 class UserOut(ORMModel):
     id: str
     tenant_id: str
-    email: EmailStr
+    email: str
     full_name: str
     role: Role
     crm: str | None
