@@ -1,9 +1,11 @@
 import jwt
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import User
@@ -24,8 +26,21 @@ def token_pair(user: User) -> TokenPair:
 @router.post("/login", response_model=TokenPair)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == form.username.lower(), User.active.is_(True)))
-    if not user or not verify_password(form.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="E-mail ou senha inválidos")
+    invalid_credentials = HTTPException(status_code=401, detail="E-mail ou senha inválidos")
+    if not user:
+        raise invalid_credentials
+    now = datetime.now()
+    if user.locked_until and user.locked_until > now:
+        raise HTTPException(status_code=423, detail="Conta temporariamente bloqueada. Tente novamente mais tarde.")
+    if not verify_password(form.password, user.hashed_password):
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= settings.login_max_attempts:
+            user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
+        db.commit()
+        raise invalid_credentials
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.commit()
     return token_pair(user)
 
 
